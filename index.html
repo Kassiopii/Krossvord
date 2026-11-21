@@ -35,6 +35,17 @@
   .cell.empty { background: transparent; border: none; }
   .cell.ok   { background: #c8f2c8; border-color: #3a9d3a; }
   .cell.err  { background: #f8cfcf; border-color: #c33; }
+  .cellwrap { position: relative; }
+.cellwrap .num {
+  position: absolute;
+  top: 0;
+  left: 2px;
+  font-size: 10px;
+  font-weight: bold;
+  color: #666;
+  pointer-events: none;
+}
+
   input.cell { -webkit-user-select: text; }
   .clues { display: flex; flex-wrap: wrap; gap: 16px; }
   .clues > div { flex: 1 1 260px; }
@@ -120,14 +131,16 @@ var FORM_URL = "https://docs.google.com/forms/d/16ng2eLhp1my2BTM0TaOqBWOMfh7935s
 // Сетка: буква = клетка для ввода, # = пустая
 var layout = [
   "ИНСТРУКТАЖ",
-  "С##Р#####",
-  "П##У#####",
+  "С##Р######",
+  "П##У######",
   "Ы##ДОПУСК#",
-  "Т###ТЛ#И##",
-  "А###ДА#З##",
-  "Н###ЕН####",
-  "И###Л#####"
+  "Т###ТЛ#А##",
+  "А###ДАЗС##",
+  "Н###ЕН##К#",
+  "И###Л###А#",
+  "Е#########"
 ];
+
 layout[1] = "С##Р######"; // добиваем до 10 символов
 layout[2] = "П##У######";
 layout[3] = "Ы##ДОПУСК#";
@@ -148,7 +161,51 @@ var words = [
   { cells: [[3,8],[4,8],[5,8],[6,8],[7,8]],                                answer: "КАСКА",      num: "7б" }
 ];
 
-var grid = document.getElementById("grid");
+vvar grid = document.getElementById("grid");
+var inputs = [];
+
+// карта стартовых клеток: номер слова рисуется в его первой клетке
+var startNums = {};
+words.forEach(function(w) {
+  var key = w.cells[0][0] + "," + w.cells[0][1];
+  startNums[key] = startNums[key] ? startNums[key] + "/" + w.num : w.num;
+});
+
+for (var r = 0; r < layout.length; r++) {
+  for (var c = 0; c < layout[r].length; c++) {
+    var ch = layout[r][c];
+    if (ch === "#") {
+      var d = document.createElement("div");
+      d.className = "cell empty";
+      grid.appendChild(d);
+    } else {
+      var wrap = document.createElement("div");
+      wrap.className = "cellwrap";
+      var inp = document.createElement("input");
+      inp.className = "cell";
+      inp.maxLength = 1;
+      inp.autocomplete = "off";
+      inp.setAttribute("autocorrect", "off");
+      inp.setAttribute("autocapitalize", "characters");
+      inp.setAttribute("spellcheck", "false");
+      inp.dataset.r = r;
+      inp.dataset.c = c;
+      inp.dataset.answer = ch;
+      wrap.appendChild(inp);
+      var n = startNums[r + "," + c];
+      if (n) {
+        var s = document.createElement("span");
+        s.className = "num";
+        s.textContent = n;
+        wrap.appendChild(s);
+      }
+      grid.appendChild(wrap);
+      inputs.push(inp);
+    }
+  }
+}
+
+  
 var inputs = [];
 
 for (var r = 0; r < layout.length; r++) {
