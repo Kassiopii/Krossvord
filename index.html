@@ -36,16 +36,15 @@
   .cell.ok   { background: #c8f2c8; border-color: #3a9d3a; }
   .cell.err  { background: #f8cfcf; border-color: #c33; }
   .cellwrap { position: relative; }
-.cellwrap .num {
-  position: absolute;
-  top: 0;
-  left: 2px;
-  font-size: 10px;
-  font-weight: bold;
-  color: #666;
-  pointer-events: none;
-}
-
+  .cellwrap .num {
+    position: absolute;
+    top: 0;
+    left: 2px;
+    font-size: 10px;
+    font-weight: bold;
+    color: #666;
+    pointer-events: none;
+  }
   input.cell { -webkit-user-select: text; }
   .clues { display: flex; flex-wrap: wrap; gap: 16px; }
   .clues > div { flex: 1 1 260px; }
@@ -125,8 +124,8 @@
 <p id="message"></p>
 
 <script>
-// Ссылка на форму результата — замени на свою, если форма другая!
-var FORM_URL = "https://docs.google.com/forms/d/16ng2eLhp1my2BTM0TaOqBWOMfh7935sxJlP7zPvZLoQ/edit/";
+// Ссылка на форму результата (Google Форма)
+var FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfbMe-R_ezYcd22h2iws-O9RO9MymhgFsx4wcrQPBfdKodyHg/viewform";
 
 // Сетка: буква = клетка для ввода, # = пустая
 var layout = [
@@ -141,14 +140,6 @@ var layout = [
   "Е#########"
 ];
 
-layout[1] = "С##Р######"; // добиваем до 10 символов
-layout[2] = "П##У######";
-layout[3] = "Ы##ДОПУСК#";
-layout[4] = "Т###ТЛ#И##";
-layout[5] = "А###ДА#З##";
-layout[6] = "Н###ЕН####";
-layout[7] = "И###Л#####";
-
 // Слова: список клеток [строка, столбец] и правильный ответ
 var words = [
   { cells: [[0,0],[0,1],[0,2],[0,3],[0,4],[0,5],[0,6],[0,7],[0,8],[0,9]], answer: "ИНСТРУКТАЖ", num: "1а" },
@@ -161,7 +152,7 @@ var words = [
   { cells: [[3,8],[4,8],[5,8],[6,8],[7,8]],                                answer: "КАСКА",      num: "7б" }
 ];
 
-vvar grid = document.getElementById("grid");
+var grid = document.getElementById("grid");
 var inputs = [];
 
 // карта стартовых клеток: номер слова рисуется в его первой клетке
@@ -200,33 +191,6 @@ for (var r = 0; r < layout.length; r++) {
         wrap.appendChild(s);
       }
       grid.appendChild(wrap);
-      inputs.push(inp);
-    }
-  }
-}
-
-  
-var inputs = [];
-
-for (var r = 0; r < layout.length; r++) {
-  for (var c = 0; c < layout[r].length; c++) {
-    var ch = layout[r][c];
-    if (ch === "#") {
-      var d = document.createElement("div");
-      d.className = "cell empty";
-      grid.appendChild(d);
-    } else {
-      var inp = document.createElement("input");
-      inp.className = "cell";
-      inp.maxLength = 1;
-      inp.autocomplete = "off";
-      inp.setAttribute("autocorrect", "off");
-      inp.setAttribute("autocapitalize", "characters");
-      inp.setAttribute("spellcheck", "false");
-      inp.dataset.r = r;
-      inp.dataset.c = c;
-      inp.dataset.answer = ch;
-      grid.appendChild(inp);
       inputs.push(inp);
     }
   }
@@ -317,11 +281,6 @@ document.getElementById("btnSend").addEventListener("click", function() {
       msg.className = "err";
       return;
     }
-  }
-  if (FORM_URL.indexOf("ВАША_ССЫЛКА") !== -1) {
-    msg.textContent = "Ссылка на форму ещё не подключена. Скажи Алисе — подключим!";
-    msg.className = "err";
-    return;
   }
   var name = document.getElementById("name").value.trim();
   window.location.href = FORM_URL + (name ? "?fio=" + encodeURIComponent(name) : "");
