@@ -186,7 +186,7 @@ var layout = [
 
 // Слова: список клеток [строка, столбец] и правильный ответ
 var words = [
-  { answer: "ВЫХОD".replace("D","Д"), cells: [[0,8],[0,9],[0,10],[0,11],[0,12]], num: "1" },
+  { answer: "ВЫХОД",        cells: [[0,8],[0,9],[0,10],[0,11],[0,12]], num: "1" },
   { answer: "ОГНЕТУШИТЕЛЬ", cells: [[0,11],[1,11],[2,11],[3,11],[4,11],[5,11],[6,11],[7,11],[8,11],[9,11],[10,11],[11,11]], num: "2" },
   { answer: "ЗНАК",         cells: [[0,16],[1,16],[2,16],[3,16]], num: "3" },
   { answer: "КАСКА",        cells: [[2,14],[3,14],[4,14],[5,14],[6,14]], num: "4" },
@@ -246,19 +246,50 @@ function cellAt(r, c) {
   return inputs.find(function(i) { return +i.dataset.r === r && +i.dataset.c === c; });
 }
 
+// Переход по слову, которое заполняет игрок.
+// dir = +1 — следующая клетка слова, dir = -1 — предыдущая.
+var lastCell = null;
+
+function neighborCell(inp, dir) {
+  var r = +inp.dataset.r, c = +inp.dataset.c;
+  var all = words.filter(function(w) {
+    return w.cells.some(function(rc) { return rc[0] === r && rc[1] === c; });
+  });
+  if (!all.length) return null;
+  var word = null;
+  // если только что заполняли соседнюю клетку — продолжаем её слово
+  if (lastCell) {
+    var pr = +lastCell.dataset.r, pc = +lastCell.dataset.c;
+    word = all.filter(function(w) {
+      return w.cells.some(function(rc) { return rc[0] === pr && rc[1] === pc; });
+    })[0] || null;
+  }
+  // иначе по умолчанию horizontal слово, если есть, иначе vertical
+  if (!word) {
+    word = all.filter(function(w) { return w.cells[0][0] === w.cells[1][0]; })[0] || all[0];
+  }
+  var idx = -1;
+  word.cells.forEach(function(rc, i) {
+    if (rc[0] === r && rc[1] === c) idx = i;
+  });
+  var target = word.cells[idx + dir];
+  return target ? cellAt(target[0], target[1]) : null;
+}
+
 // Ввод: телефон дружелюбно — реагируем на input, а не на клавиши
 inputs.forEach(function(inp) {
   inp.addEventListener("input", function() {
     inp.value = inp.value.toUpperCase().replace(/[^А-ЯЁ]/g, "");
     inp.classList.remove("ok", "err");
     if (inp.value.length === 1) {
-      var next = inputs[inputs.indexOf(inp) + 1];
+      var next = neighborCell(inp, +1);
       if (next) next.focus();
     }
+    lastCell = inp;
   });
   inp.addEventListener("keydown", function(e) {
     if (e.key === "Backspace" && inp.value === "") {
-      var prev = inputs[inputs.indexOf(inp) - 1];
+      var prev = neighborCell(inp, -1);
       if (prev) { prev.focus(); prev.value = ""; e.preventDefault(); }
     }
   });
@@ -300,7 +331,7 @@ btnSend.addEventListener("click", function() {
     return;
   }
 
-  var score = words.length - checkAnswers().length; // число полностью угаданных words
+  var score = words.length - checkAnswers().length; // число полностью угаданных слов
 
   // бонус «за старание»: 5+ заполненных слов, даже если часть неверна (п. 5.2 Положения)
   var attempted = words.filter(function(w) {
@@ -367,6 +398,7 @@ document.getElementById("btnClear").addEventListener("click", function() {
   msg.className = "";
   btnSend.disabled = false;
   sending = false;
+  lastCell = null;
   inputs[0].focus();
 });
 </script>
