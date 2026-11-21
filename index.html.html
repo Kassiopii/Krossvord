@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Кроссворд «Вахта и безопасность»</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, Helvetica, sans-serif; background:#eef1f5; padding:12px; max-width:900px; margin:0 auto; }
+h1 { font-size: 1.25rem; text-align:center; margin: 8px 0 4px; }
+.sub { text-align:center; color:#555; font-size:.9rem; margin-bottom:12px; }
+#gridwrap { overflow-x:auto; padding-bottom:6px; }
+#grid { display:grid; grid-template-columns: repeat(19, var(--cs)); width:max-content; margin:0 auto; --cs: clamp(17px, 4.5vw, 34px); }
+.cell { width:var(--cs); height:var(--cs); background:#23262b; border:1px solid #3a3d44; position:relative; }
+.cell input { width:100%; height:100%; border:none; background:#fff; text-align:center;
+  font-size: calc(var(--cs) * .55); font-weight:bold; text-transform:uppercase;
+  color:#1a1a1a; outline:none; padding:0; caret-color:#4f46e5; }
+.cell input.ok { background:#d6f5d6; color:#136c13; }
+.cell input.bad { background:#ffe0e0; color:#a11; }
+.cell .num { position:absolute; top:0; left:1px; font-size: calc(var(--cs) * .32); color:#666; pointer-events:none; z-index:2; }
+.clues { display:flex; gap:24px; flex-wrap:wrap; margin:16px 0; }
+.clues h3 { font-size:1rem; margin-bottom:6px; }
+.clues ol { padding-left:20px; font-size:.92rem; line-height:1.5; }
+.panel { background:#fff; border-radius:12px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,.08); margin-top:8px; }
+.score { font-size:1.1rem; font-weight:bold; margin-bottom:10px; min-height:1.3em; }
+.score.good { color:#137a13; } .score.meh { color:#b45309; }
+label { display:block; font-weight:bold; margin:10px 0 4px; }
+#name { width:100%; max-width:340px; padding:10px; font-size:1rem; border:1px solid #bbb; border-radius:8px; }
+.btns { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+button { padding:12px 20px; font-size:1rem; border:none; border-radius:8px; cursor:pointer; font-weight:bold; }
+#check { background:#4f46e5; color:#fff; }
+#send { background:#0f9d58; color:#fff; }
+#clear { background:#e5e7eb; color:#333; }
+#status { margin-top:10px; font-size:.95rem; color:#555; min-height:1.2em; }
+@media print { .btns, .panel, #status { display:none; } body { background:#fff; } }
+</style>
+</head>
+<body>
+<h1>КРОССВОРД «ВАХТА И БЕЗОПАСНОСТЬ»</h1>
+<p class="sub">5 минут на внимательность. Впишите буквы в клетки — подсказки под сеткой.</p>
+<div id="gridwrap"><div id="grid"></div></div>
+<div class="clues">
+  <div><h3>По горизонтали:</h3><ol id="cluesA"></ol></div>
+  <div><h3>По вертикали:</h3><ol id="cluesD"></ol></div>
+</div>
+<div class="panel">
+  <div class="score" id="score"></div>
+  <label for="name">Ваша фамилия (или ник):</label>
+  <input id="name" placeholder="Иван_С" autocomplete="off">
+  <div class="btns">
+    <button id="check">Проверить</button>
+    <button id="send">Отправить результат</button>
+    <button id="clear">Очистить</button>
+  </div>
+  <div id="status"></div>
+</div>
+<script>
+const ANSWERS = {"1,10": "В", "1,11": "Ы", "1,12": "Х", "1,13": "О", "1,14": "Д", "4,12": "П", "4,13": "Е", "4,14": "Р", "4,15": "Ч", "4,16": "А", "4,17": "Т", "4,18": "К", "4,19": "И", "5,4": "Ж", "5,5": "У", "5,6": "Р", "5,7": "Н", "5,8": "А", "5,9": "Л", "12,2": "Б", "12,3": "Е", "12,4": "З", "12,5": "О", "12,6": "П", "12,7": "А", "12,8": "С", "12,9": "Н", "12,10": "О", "12,11": "С", "12,12": "Т", "12,13": "Ь", "2,13": "Г", "3,13": "Н", "5,13": "Т", "6,13": "У", "7,13": "Ш", "8,13": "И", "9,13": "Т", "10,13": "Е", "11,13": "Л", "1,18": "З", "2,18": "Н", "3,18": "А", "3,16": "К", "5,16": "С", "6,16": "К", "7,16": "А", "4,7": "И", "6,7": "С", "7,7": "Т", "8,7": "Р", "9,7": "У", "10,7": "К", "11,7": "Т", "13,7": "Ж", "9,3": "К", "10,3": "А", "11,3": "Б", "13,3": "Л", "14,3": "Ь", "9,5": "О", "10,5": "С", "11,5": "М", "13,5": "Т", "14,5": "Р"};
+const NUMS = {"1,10": 1, "4,12": 6, "5,4": 7, "12,2": 10, "1,13": 2, "1,18": 3, "3,16": 4, "4,7": 5, "9,3": 8, "9,5": 9};
+const ACROSS = [[1, 10, "\u0412\u042b\u0425\u041e\u0414", 1], [4, 12, "\u041f\u0415\u0420\u0427\u0410\u0422\u041a\u0418", 6], [5, 4, "\u0416\u0423\u0420\u041d\u0410\u041b", 7], [12, 2, "\u0411\u0415\u0417\u041e\u041f\u0410\u0421\u041d\u041e\u0421\u0422\u042c", 10]];
+const DOWN = [[1, 13, "\u041e\u0413\u041d\u0415\u0422\u0423\u0428\u0418\u0422\u0415\u041b\u042c", 2], [1, 18, "\u0417\u041d\u0410\u041a", 3], [3, 16, "\u041a\u0410\u0421\u041a\u0410", 4], [4, 7, "\u0418\u041d\u0421\u0422\u0420\u0423\u041a\u0422\u0410\u0416", 5], [9, 3, "\u041a\u0410\u0411\u0415\u041b\u042c", 8], [9, 5, "\u041e\u0421\u041c\u041e\u0422\u0420", 9]];
+const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfbMe-R_ezYcd22h2iws-O9RO9MymhgFsx4wcrQPBfdKodyHg/viewform";
+const ENTRY_NAME = "entry.179250710";
+const ENTRY_SCORE = "entry.450103612";
+const CLUES = {
+  1:'Место, куда надо идти, если объявили эвакуацию.',
+  2:'Вещь, которую берут, чтобы потушить небольшое возгорание.',
+  3:'Табличка или рисунок, который предупреждает об опасности.',
+  4:'Элемент СИЗ, который надевают первым делом перед выходом на участок.',
+  5:'Короткое обучение перед началом работ, где рассказывают про риски на месте.',
+  6:'Средство защиты рук от порезов, масла, холода.',
+  7:'Документ, где фиксируют инструктаж и ставят подпись.',
+  8:'То, что нельзя оставлять поперёк прохода — частая причина падений.',
+  9:'То, что делают перед сменой: проверяют инструмент, ограждения, освещение.',
+  10:'Состояние, когда риск сведён к минимуму и работать можно спокойно.'
+};
+
+const grid = document.getElementById('grid');
+const inputs = {};
+for (let r = 1; r <= 14; r++) {
+  for (let c = 1; c <= 19; c++) {
+    const key = r + ',' + c;
+    const div = document.createElement('div');
+    div.className = 'cell';
+    if (ANSWERS[key] !== undefined) {
+      if (NUMS[key]) {
+        const n = document.createElement('span');
+        n.className = 'num'; n.textContent = NUMS[key];
+        div.appendChild(n);
+      }
+      const inp = document.createElement('input');
+      inp.maxLength = 1; inp.dataset.key = key;
+      inp.setAttribute('autocomplete','off'); inp.setAttribute('inputmode','text');
+      inp.addEventListener('input', onInput);
+      inp.addEventListener('keydown', onKey);
+      inp.addEventListener('focus', () => inp.select());
+      div.appendChild(inp);
+      inputs[key] = inp;
+    }
+    grid.appendChild(div);
+  }
+}
+
+function onInput(e) {
+  const inp = e.target;
+  inp.value = inp.value.replace(/[^а-яёА-ЯЁ]/,'').toUpperCase();
+  if (inp.value.length === 1) focusNext(inp);
+}
+function onKey(e) {
+  if (e.key === 'Backspace' && !e.target.value) { focusPrev(e.target); e.preventDefault(); }
+}
+const order = Object.keys(inputs);
+function focusNext(inp) {
+  const i = order.indexOf(inp.dataset.key);
+  if (i < order.length - 1) inputs[order[i + 1]].focus(); else inp.blur();
+}
+function focusPrev(inp) {
+  const i = order.indexOf(inp.dataset.key);
+  if (i > 0) inputs[order[i - 1]].focus();
+}
+
+function fill(el, arr) {
+  arr.sort((a,b)=>a[3]-b[3]).forEach(([, , , n]) => {
+    const li = document.createElement('li');
+    li.textContent = CLUES[n];
+    el.appendChild(li);
+  });
+}
+fill(document.getElementById('cluesA'), ACROSS);
+fill(document.getElementById('cluesD'), DOWN);
+
+function markWord(cellsArr, w, ok) {
+  for (const inp of cellsArr) {
+    if (inp) inp.classList.add(ok ? 'ok' : (inp.value ? 'bad' : ''));
+  }
+}
+function getCellsAcross(r, c, w) {
+  const arr = [];
+  for (let i = 0; i < w.length; i++) arr.push(inputs[r + ',' + (c + i)]);
+  return arr;
+}
+function getCellsDown(r, c, w) {
+  const arr = [];
+  for (let i = 0; i < w.length; i++) arr.push(inputs[(r + i) + ',' + c]);
+  return arr;
+}
+
+function check() {
+  for (const key in inputs) inputs[key].classList.remove('ok','bad');
+  let correct = 0;
+  for (const [r, c, w] of ACROSS) {
+    const arr = getCellsAcross(r, c, w);
+    const ok = arr.every(inp => inp && inp.value === w[arr.indexOf(inp)]);
+    if (ok) correct++;
+    markWord(arr, w, ok);
+  }
+  for (const [r, c, w] of DOWN) {
+    const arr = getCellsDown(r, c, w);
+    const ok = arr.every(inp => inp && inp.value === w[arr.indexOf(inp)]);
+    if (ok) correct++;
+    markWord(arr, w, ok);
+  }
+  const sc = document.getElementById('score');
+  sc.textContent = 'Верно слов: ' + correct + ' из 10';
+  sc.className = 'score ' + (correct >= 8 ? 'good' : 'meh');
+  return correct;
+}
+
+document.getElementById('check').onclick = check;
+
+document.getElementById('clear').onclick = () => {
+  for (const key in inputs) { inputs[key].value=''; inputs[key].classList.remove('ok','bad'); }
+  document.getElementById('name').value = '';
+  document.getElementById('score').textContent = '';
+  document.getElementById('status').textContent = '';
+};
+
+document.getElementById('send').onclick = () => {
+  const correct = check();
+  const name = document.getElementById('name').value.trim();
+  const st = document.getElementById('status');
+  if (!name) { st.textContent = 'Сначала впишите фамилию или ник.'; document.getElementById('name').focus(); return; }
+  if (correct < 10 && !confirm('Разгадано ' + correct + ' из 10. Отправить результат как есть?')) return;
+  const url = FORM_URL + '?usp=pp_url&' + ENTRY_NAME + '=' + encodeURIComponent(name) + '&' + ENTRY_SCORE + '=' + correct;
+  window.open(url, '_blank');
+  st.textContent = 'Открылась форма — проверьте и нажмите «Отправить». Спасибо!';
+};
+</script>
+</body>
+</html>
