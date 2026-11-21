@@ -92,18 +92,17 @@
     box-sizing: border-box;
   }
   .buttons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 16px 0; }
-  .buttons button, .buttons a.btn-send {
+  .buttons button {
     padding: 12px 20px;
     font-size: 16px;
     border: none;
     border-radius: 6px;
     cursor: pointer;
     color: #fff;
-    text-decoration: none;
-    display: inline-block;
   }
   #btnCheck  { background: #2d7dd2; }
   #btnSend   { background: #2d9d4f; }
+  #btnSend:disabled { opacity: 0.6; cursor: default; }
   #btnClear  { background: #888; }
   #message {
     text-align: center;
@@ -153,7 +152,7 @@
 
 <div class="buttons">
   <button id="btnCheck" type="button">Проверить</button>
-  <a id="btnSend" class="btn-send" href="https://docs.google.com/forms/d/e/1FAIpQLSfbMe-R_ezYcd22h2iws-O9RO9MymhgFsx4wcrQPBfdKodyHg/viewform">Отправить результат</a>
+  <button id="btnSend" type="button">Отправить результат</button>
   <button id="btnClear" type="button">Очистить</button>
 </div>
 
@@ -161,12 +160,13 @@
 
 <script>
 // ====== НАСТРОЙКИ ФОРМЫ ======
-var FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfbMe-R_ezYcd22h2iws-O9RO9MymhgFsx4wcrQPBfdKodyHg/viewform";
+var FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfbMe-R_ezYcd22h2iws-O9RO9MymhgFsx4wcrQPBfdKodyHg";
 
-// ЗАМЕНИ эти два номера на свои — их даёт «Предварительно заполнить» в Google Форме.
-// Пока стоят заглушки: форма откроется с пустыми полями, ничего не сломается.
-var ENTRY_NAME  = "entry.ФАМИЛИЯ";   // поле «Фамилия»
-var ENTRY_SCORE = "entry.БАЛЛЫ";     // поле «Правильных ответов»
+// ЗАМЕНИ эти два номера на свои — их даёт «Получить ссылку с предварительным заполнением»
+// в Google Форме (в ссылке будут куски вида entry.123456789=ТЕСТ).
+// Пока стоят заглушки: кнопка честно скажет, что отправка ещё не подключена.
+var ENTRY_NAME  = "entry.ФАМИЛИЯ";   // поле «Напишите свои ФИО»
+var ENTRY_SCORE = "entry.БАЛЛЫ";     // поле «Верных слов»
 // ============================
 
 // Сетка из исходного файла: буква = клетка для ввода, # = пустая. 14 строк x 18 столбцов.
@@ -203,7 +203,6 @@ var words = [
 
 var grid = document.getElementById("grid");
 var inputs = [];
-var btnSend = document.getElementById("btnSend");
 
 // карта стартовых клеток: номер слова рисуется в его первой клетке
 var startNums = {};
@@ -288,29 +287,60 @@ function checkAnswers() {
   return wrong;
 }
 
-// Перед каждым переходом на форму вписываем в ссылку фамилию и баллы
-function updateFormLink() {
-  var score = words.length - checkAnswers().length; // число полностью угаданных слов (из 10)
-  var name = document.getElementById("name").value.trim();
-  var params = [];
-  if (ENTRY_NAME.indexOf("ФАМИЛИЯ") === -1 && name) {
-    params.push(ENTRY_NAME + "=" + encodeURIComponent(name));
-  }
-  if (ENTRY_SCORE.indexOf("БАЛЛЫ") === -1) {
-    params.push(ENTRY_SCORE + "=" + score);
-  }
-  btnSend.href = FORM_URL + (params.length ? "?" + params.join("&") : "");
-}
-
 var msg = document.getElementById("message");
-var armed = false;
+var btnSend = document.getElementById("btnSend");
+var sending = false;
+
+// Отправка с одного нажатия: фамилия и баллы подставляются сами,
+// форма уходит в фоне — игрок её не видит и не может ничего испортить.
+btnSend.addEventListener("click", function() {
+  if (sending) return;
+
+  if (ENTRY_NAME.indexOf("ФАМИЛИЯ") !== -1 || ENTRY_SCORE.indexOf("БАЛЛЫ") !== -1) {
+    msg.textContent = "Отправка ещё не подключена: организатор должен вписать номера полей формы в код.";
+    msg.className = "err";
+    return;
+  }
+
+  var name = document.getElementById("name").value.trim();
+  if (!name) {
+    msg.textContent = "Сначала впиши фамилию (или ник) — без неё результат не засчитается.";
+    msg.className = "err";
+    return;
+  }
+
+  var score = words.length - checkAnswers().length; // число полностью угаданных слов
+
+  sending = true;
+  btnSend.disabled = true;
+  msg.textContent = "Отправляю...";
+  msg.className = "";
+
+  var body = ENTRY_NAME + "=" + encodeURIComponent(name) +
+             "&" + ENTRY_SCORE + "=" + encodeURIComponent(score);
+
+  fetch(FORM_URL + "/formResponse", {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body
+  }).then(function() {
+    msg.textContent = "Результат отправлен: " + score + " из " + words.length + ". Спасибо!";
+    msg.className = "ok";
+  }).catch(function() {
+    sending = false;
+    btnSend.disabled = false;
+    msg.textContent = "Не получилось отправить. Проверь интернет и нажми ещё раз.";
+    msg.className = "err";
+  });
+});
 
 document.getElementById("btnCheck").addEventListener("click", function() {
   clearMarks();
   var wrong = checkAnswers();
   if (wrong.length === 0 && inputs.every(function(i) { return i.value !== ""; })) {
     markAll("ok");
-    msg.textContent = "Всё верно! Отличная работа!";
+    msg.textContent = "Всё верно! Отличная работа! Не забудь нажать «Отправить результат».";
     msg.className = "ok";
   } else {
     words.forEach(function(w) {
@@ -328,36 +358,13 @@ document.getElementById("btnCheck").addEventListener("click", function() {
   }
 });
 
-// «Отправить результат» — настоящая ссылка: переход работает в любом браузере.
-// Тап по ней перед переходом успевает обновить ссылку: фамилия + баллы внутри.
-// Если кроссворд не заполнен/с ошибками, первый тап только подсвечивает клетки.
-btnSend.addEventListener("click", function(e) {
-  var filled = inputs.every(function(i) { return i.value !== ""; });
-  var wrong = checkAnswers();
-  if (!filled || wrong.length > 0) {
-    if (!armed) {
-      armed = true;
-      e.preventDefault();
-      clearMarks();
-      words.forEach(function(w) {
-        w.cells.forEach(function(rc) {
-          var cell = cellAt(rc[0], rc[1]);
-          if (cell && cell.value !== w.answer[w.cells.indexOf(rc)]) cell.classList.add("err");
-        });
-      });
-      msg.textContent = "Клетки подсвечены. Исправь и нажми ещё раз — или нажми «Отправить» повторно, чтобы отправить как есть.";
-      msg.className = "err";
-    }
-  }
-  updateFormLink();
-});
-
 document.getElementById("btnClear").addEventListener("click", function() {
   inputs.forEach(function(i) { i.value = ""; });
   clearMarks();
   msg.textContent = "";
   msg.className = "";
-  armed = false;
+  btnSend.disabled = false;
+  sending = false;
   inputs[0].focus();
 });
 </script>
