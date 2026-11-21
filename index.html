@@ -60,13 +60,15 @@
     box-sizing: border-box;
   }
   .buttons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 16px 0; }
-  .buttons button {
+  .buttons button, .buttons a.btn-send {
     padding: 12px 20px;
     font-size: 16px;
     border: none;
     border-radius: 6px;
     cursor: pointer;
     color: #fff;
+    text-decoration: none;
+    display: inline-block;
   }
   #btnCheck  { background: #2d7dd2; }
   #btnSend   { background: #2d9d4f; }
@@ -117,7 +119,7 @@
 
 <div class="buttons">
   <button id="btnCheck" type="button">Проверить</button>
-  <button id="btnSend" type="button">Отправить результат</button>
+  <a id="btnSend" class="btn-send" href="https://docs.google.com/forms/d/e/1FAIpQLSfbMe-R_ezYcd22h2iws-O9RO9MymhgFsx4wcrQPBfdKodyHg/viewform">Отправить результат</a>
   <button id="btnClear" type="button">Очистить</button>
 </div>
 
@@ -264,12 +266,16 @@ document.getElementById("btnCheck").addEventListener("click", function() {
   }
 });
 
-document.getElementById("btnSend").addEventListener("click", function() {
+// «Отправить результат» — теперь настоящая ссылка на форму:
+// переход по ней работает в любом браузере, включая телефон.
+// Если кроссворд не заполнен/с ошибками, первый тап только подсвечивает клетки.
+document.getElementById("btnSend").addEventListener("click", function(e) {
   var filled = inputs.every(function(i) { return i.value !== ""; });
   var wrong = checkAnswers();
   if (!filled || wrong.length > 0) {
     if (!armed) {
       armed = true;
+      e.preventDefault();
       clearMarks();
       words.forEach(function(w) {
         w.cells.forEach(function(rc) {
@@ -279,11 +285,8 @@ document.getElementById("btnSend").addEventListener("click", function() {
       });
       msg.textContent = "Клетки подсвечены. Исправь и нажми ещё раз — или нажми «Отправить» повторно, чтобы отправить как есть.";
       msg.className = "err";
-      return;
     }
   }
-  var name = document.getElementById("name").value.trim();
-  window.location.href = FORM_URL + (name ? "?fio=" + encodeURIComponent(name) : "");
 });
 
 document.getElementById("btnClear").addEventListener("click", function() {
