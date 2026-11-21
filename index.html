@@ -46,10 +46,34 @@
     pointer-events: none;
   }
   input.cell { -webkit-user-select: text; }
-  .clues { display: flex; flex-wrap: wrap; gap: 16px; }
-  .clues > div { flex: 1 1 260px; }
-  .clues h3 { margin: 8px 0 4px; font-size: 16px; }
-  .clues p { margin: 4px 0; font-size: 14px; }
+  .clues {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+  }
+  .clues .col { flex: 1 1 280px; }
+  .clue {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin: 6px 0;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .clue .dir {
+    flex: 0 0 22px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: bold;
+    color: #2d7dd2;
+  }
+  .clue .dir.down { color: #2d9d4f; }
+  .clue b { white-space: nowrap; }
   .name-block { margin: 16px 0; }
   .name-block input {
     width: 100%;
@@ -96,19 +120,17 @@
 <div id="grid"></div>
 
 <div class="clues">
-  <div>
-    <h3>По горизонтали:</h3>
-    <p><b>1.</b> Обязательное обучение безопасным приёмам работы перед сменой.</p>
-    <p><b>3.</b> Наряд-… — документ, разрешающий особо опасные работы.</p>
+  <div class="col">
+    <div class="clue"><span class="dir">&#8594;</span><span><b>1.</b> Обязательное обучение безопасным приёмам работы перед сменой.</span></div>
+    <div class="clue"><span class="dir">&#8594;</span><span><b>3.</b> Наряд-… — документ, разрешающий особо опасные работы.</span></div>
   </div>
-  <div>
-    <h3>По вертикали:</h3>
-    <p><b>1.</b> Проверка знаний работника по охране труда.</p>
-    <p><b>2.</b> Охрана … — безопасность на рабочем месте.</p>
-    <p><b>4.</b> … охраны труда — служба на предприятии.</p>
-    <p><b>5.</b> … эвакуации висит на каждом этаже.</p>
-    <p><b>6.</b> Каска, перчатки и очки — одним словом (сокращённо).</p>
-    <p><b>7.</b> Защита головы вахтёра.</p>
+  <div class="col">
+    <div class="clue"><span class="dir down">&#8595;</span><span><b>1.</b> Проверка знаний работника по охране труда.</span></div>
+    <div class="clue"><span class="dir down">&#8595;</span><span><b>2.</b> Охрана … — безопасность на рабочем месте.</span></div>
+    <div class="clue"><span class="dir down">&#8595;</span><span><b>4.</b> … охраны труда — служба на предприятии.</span></div>
+    <div class="clue"><span class="dir down">&#8595;</span><span><b>5.</b> … эвакуации висит на каждом этаже.</span></div>
+    <div class="clue"><span class="dir down">&#8595;</span><span><b>6.</b> Каска, перчатки и очки — одним словом (сокращённо).</span></div>
+    <div class="clue"><span class="dir down">&#8595;</span><span><b>7.</b> Защита головы вахтёра.</span></div>
   </div>
 </div>
 
@@ -126,8 +148,14 @@
 <p id="message"></p>
 
 <script>
-// Ссылка на форму результата (Google Форма)
+// ====== НАСТРОЙКИ ФОРМЫ ======
 var FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfbMe-R_ezYcd22h2iws-O9RO9MymhgFsx4wcrQPBfdKodyHg/viewform";
+
+// ЗАМЕНИ эти два номера на свои — их даёт «Предварительно заполнить» в Google Форме.
+// Пока стоят заглушки: форма откроется с пустыми полями, ничего не сломается.
+var ENTRY_NAME  = "entry.ФАМИЛИЯ";   // поле «Фамилия»
+var ENTRY_SCORE = "entry.БАЛЛЫ";     // поле «Правильных ответов»
+// ============================
 
 // Сетка: буква = клетка для ввода, # = пустая
 var layout = [
@@ -156,6 +184,7 @@ var words = [
 
 var grid = document.getElementById("grid");
 var inputs = [];
+var btnSend = document.getElementById("btnSend");
 
 // карта стартовых клеток: номер слова рисуется в его первой клетке
 var startNums = {};
@@ -240,6 +269,20 @@ function checkAnswers() {
   return wrong;
 }
 
+// Перед каждым переходом на форму вписываем в ссылку фамилию и баллы
+function updateFormLink() {
+  var score = words.length - checkAnswers().length; // число полностью угаданных слов
+  var name = document.getElementById("name").value.trim();
+  var params = [];
+  if (ENTRY_NAME.indexOf("ФАМИЛИЯ") === -1 && name) {
+    params.push(ENTRY_NAME + "=" + encodeURIComponent(name));
+  }
+  if (ENTRY_SCORE.indexOf("БАЛЛЫ") === -1) {
+    params.push(ENTRY_SCORE + "=" + score);
+  }
+  btnSend.href = FORM_URL + (params.length ? "?" + params.join("&") : "");
+}
+
 var msg = document.getElementById("message");
 var armed = false;
 
@@ -266,10 +309,10 @@ document.getElementById("btnCheck").addEventListener("click", function() {
   }
 });
 
-// «Отправить результат» — теперь настоящая ссылка на форму:
-// переход по ней работает в любом браузере, включая телефон.
+// «Отправить результат» — настоящая ссылка: переход работает в любом браузере.
+// Тап по ней перед переходом успевает обновить ссылку: фамилия + баллы внутри.
 // Если кроссворд не заполнен/с ошибками, первый тап только подсвечивает клетки.
-document.getElementById("btnSend").addEventListener("click", function(e) {
+btnSend.addEventListener("click", function(e) {
   var filled = inputs.every(function(i) { return i.value !== ""; });
   var wrong = checkAnswers();
   if (!filled || wrong.length > 0) {
@@ -287,6 +330,7 @@ document.getElementById("btnSend").addEventListener("click", function(e) {
       msg.className = "err";
     }
   }
+  updateFormLink();
 });
 
 document.getElementById("btnClear").addEventListener("click", function() {
